@@ -1,7 +1,6 @@
 {
   "version": 10,
   "$schema": "https://cmake.org/cmake/help/latest/manual/presets/schema.json",
-  "cmakeMinimumRequired": { "major": 3, "minor": 31 },
   "configurePresets": [
     {
       "name": "ninja-rel",
@@ -11,7 +10,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "MIN_SIZE": "ON",
-        "USE_STATIC_CRT": "ON"
+        "USE_STATIC_CRT": "OFF"
       }
     }
   ],
