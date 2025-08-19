@@ -724,7 +724,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             PostMessage(hwnd, WM_CLOSE, 0, 0);
         } else if (wParam == VK_RETURN || ((GetKeyState(VK_CONTROL)&0x8000) && wParam=='C')){
             if (CopySelectionToClipboard(hwnd)){
-                MessageBeep(MB_OK);
                 PostMessage(hwnd, WM_CLOSE, 0, 0);
             }
         }
