@@ -1,0 +1,30 @@
+{
+  "version": 10,
+  "$schema": "https://cmake.org/cmake/help/latest/manual/presets/schema.json",
+  "cmakeMinimumRequired": { "major": 3, "minor": 31 },
+  "configurePresets": [
+    {
+      "name": "ninja-rel",
+      "displayName": "Ninja Release",
+      "generator": "Ninja",
+      "binaryDir": "build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "MIN_SIZE": "ON",
+        "USE_STATIC_CRT": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "ninja-rel", "configurePreset": "ninja-rel" }
+  ],
+  "workflowPresets": [
+    {
+      "name": "build",
+      "steps": [
+        { "type": "configure", "name": "ninja-rel" },
+        { "type": "build",      "name": "ninja-rel" }
+      ]
+    }
+  ]
+}

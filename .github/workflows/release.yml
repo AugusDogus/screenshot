@@ -1,0 +1,78 @@
+name: release
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: jwlawson/actions-setup-cmake@v2.0.2
+        with:
+          cmake-version: latest
+
+      - uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: x64
+
+      - name: Ensure Ninja
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) {
+            choco install ninja --no-progress -y
+          }
+          ninja --version
+
+      - name: Configure + Build (CMake workflow preset)
+        run: cmake --workflow --preset build
+
+      - name: Stage artifact
+        id: stage
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $exeName = "screenshot-$tag-x64.exe"
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Copy-Item "build/screenshot.exe" "dist/$exeName"
+          "exe_path=dist/$exeName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
+          "exe_name=$exeName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
+
+      - name: Compute checksums
+        id: sums
+        shell: pwsh
+        run: |
+          $sha256 = (Get-FileHash "${{ steps.stage.outputs.exe_path }}" -Algorithm SHA256).Hash
+          $md5    = (Get-FileHash "${{ steps.stage.outputs.exe_path }}" -Algorithm MD5).Hash
+          "sha256=$sha256" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
+          "md5=$md5" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding ascii
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-${{ github.ref_name }}-x64
+          path: ${{ steps.stage.outputs.exe_path }}
+
+      - name: Create GitHub Release (EXE only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2.3.2
+        with:
+          files: ${{ steps.stage.outputs.exe_path }}
+          body: |
+            # screenshot ${{ github.ref_name }} (Windows x64)
+
+            **Checksums**
+            ```text
+            SHA256  ${{ steps.sums.outputs.sha256 }}  ${{ steps.stage.outputs.exe_name }}
+            MD5     ${{ steps.sums.outputs.md5 }}     ${{ steps.stage.outputs.exe_name }}
+            ```
+
+            **Verify (PowerShell)**
+            ```powershell
+            Get-FileHash .\${{ steps.stage.outputs.exe_name }} -Algorithm SHA256
+            ```
