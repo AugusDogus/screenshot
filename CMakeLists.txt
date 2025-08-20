@@ -31,4 +31,4 @@ if (MSVC)
 endif()
 
 # Win32 libs
-target_link_libraries(screenshot PRIVATE user32 gdi32 msimg32)
+target_link_libraries(screenshot PRIVATE user32 gdi32 msimg32 shell32)
