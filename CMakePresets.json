@@ -9,13 +9,15 @@
       "binaryDir": "build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "MIN_SIZE": "ON",
-        "USE_STATIC_CRT": "OFF"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     }
   ],
   "buildPresets": [
-    { "name": "ninja-rel", "configurePreset": "ninja-rel" }
+    {
+      "name": "ninja-rel",
+      "configurePreset": "ninja-rel"
+    }
   ],
   "workflowPresets": [
     {
