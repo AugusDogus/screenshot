@@ -1,6 +1,6 @@
 # Screenshot
 
-A small, fast region screenshot overlay written in C (Win32/GDI) for Windows x64. Darkens the desktop and provides an intuitive selection interface with clipboard integration.
+A small, fast region screenshot overlay written in C (Win32/GDI) for Windows x64. Darkens the desktop and provides an intuitive selection interface with clipboard integration. Features a system tray icon and global hotkey for easy access.
 
 ## Features
 
@@ -9,9 +9,12 @@ A small, fast region screenshot overlay written in C (Win32/GDI) for Windows x64
 - **Resize Handles**: Drag handles to resize (handles flip when crossing sides)
 - **Clipboard Integration**: Copy selection to clipboard with Enter or Ctrl+C
 - **Easy Exit**: Cancel/exit with Esc or right-click
+- **System Tray**: Always accessible via system tray icon
+- **Global Hotkey**: PrintScreen key triggers screenshot overlay instantly
 
 ## Usage
 
+### Screenshot Interface
 | Action | Result |
 |--------|--------|
 | **Left-click + drag** | Create a selection |
@@ -19,6 +22,15 @@ A small, fast region screenshot overlay written in C (Win32/GDI) for Windows x64
 | **Drag handles** | Resize the selection |
 | **Enter** or **Ctrl+C** | Copy to clipboard and exit |
 | **Esc** or **Right-click** | Cancel and exit |
+
+### System Tray
+- **Left-click tray icon**: Launch screenshot overlay
+- **Right-click tray icon**: Show context menu
+  - **Take Screenshot**: Launch overlay (same as PrintScreen)
+  - **Exit**: Close the application
+
+### Global Hotkey
+- **PrintScreen**: Instantly launch screenshot overlay (no modifiers needed)
 
 ## Building
 
