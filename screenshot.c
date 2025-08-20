@@ -73,9 +73,9 @@ typedef struct {
 static OVERLAY og;
 
 static const BYTE OVERLAY_ALPHA = 100;
-static const int HANDLE_SIZE = 5;
+static const int HANDLE_SIZE = 3;
 static const int BORDER_WIDTH = 2;
-static const int HANDLE_BORDER_WIDTH = 2;
+static const int HANDLE_BORDER_WIDTH = 1;
 static const int MIN_SEL_SIZE = 2;
 
 static void Overlay_DeleteBackBuffer(void) {
@@ -317,7 +317,7 @@ static void DrawHandles(HDC hdc, const RECT *r) {
   POINT c[8];
   GetHandleCenters(r, c);
   HGDIOBJ oldPen = SelectObject(hdc, og.hPenHandle);
-  HGDIOBJ oldBr = SelectObject(hdc, GetStockObject(HOLLOW_BRUSH));
+  HGDIOBJ oldBr = SelectObject(hdc, og.hBrushBlack);
   for (int i = 0; i < 8; i++) {
     RECT hr = HR(c[i]);
     Rectangle(hdc, hr.left, hr.top, hr.right, hr.bottom);
@@ -765,8 +765,7 @@ static void Tray_Add(HWND hwnd) {
   g_nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
   g_nid.uCallbackMessage = WM_TRAYICON;
   g_nid.hIcon = (HICON)LoadIcon(NULL, IDI_APPLICATION);
-  lstrcpynW(g_nid.szTip, L"Screenshot (PrintScreen to capture)",
-            ARRAYSIZE(g_nid.szTip));
+  lstrcpynW(g_nid.szTip, L"screenshot", ARRAYSIZE(g_nid.szTip));
   Shell_NotifyIconW(NIM_ADD, &g_nid);
 }
 
@@ -778,7 +777,7 @@ static void Tray_Delete(void) {
 
 static void Tray_ShowMenu(HWND hwnd) {
   HMENU m = CreatePopupMenu();
-  AppendMenuW(m, MF_STRING, IDM_TRAY_CAPTURE, L"Take Screenshot\tPrtSc");
+  AppendMenuW(m, MF_STRING, IDM_TRAY_CAPTURE, L"Take Screenshot");
   AppendMenuW(m, MF_SEPARATOR, 0, NULL);
   AppendMenuW(m, MF_STRING, IDM_TRAY_EXIT, L"Exit");
 
