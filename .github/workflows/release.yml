@@ -1,19 +1,19 @@
 name: release
 on:
   push:
-    tags: [ 'v*' ]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
-        arch: [ x86, x64 ]
+        arch: [x86, x64]
     steps:
       - uses: actions/checkout@v5
 
@@ -51,23 +51,64 @@ jobs:
           name: exe-${{ matrix.arch }}
           path: ${{ steps.stage.outputs.exe_path }}
 
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x86_64]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }}
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Stage app bundle
+        id: stage
+        run: |
+          tag="${{ github.ref_name }}"
+          zipName="screenshot-${tag}-macos-${{ matrix.arch }}.zip"
+          mkdir -p dist
+          cd build
+          zip -r "../dist/${zipName}" screenshot.app
+          echo "zip_path=dist/${zipName}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: ${{ steps.stage.outputs.zip_path }}
+
   release:
-    needs: build
-    runs-on: windows-latest
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: exe-x86
-          path: dist/x86
+          path: dist/windows
       - uses: actions/download-artifact@v4
         with:
           name: exe-x64
-          path: dist/x64
+          path: dist/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-arm64
+          path: dist/macos
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-x86_64
+          path: dist/macos
 
-      - name: Create GitHub Release (x86 + x64, no notes)
+      - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2.3.2
         with:
           files: |
-            dist/x86/*.exe
-            dist/x64/*.exe
+            dist/windows/*.exe
+            dist/macos/*.zip

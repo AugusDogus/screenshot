@@ -1,2 +1,10 @@
+# Build directories
+build/
+
+# Windows
 *.exe
 *.obj
+
+# macOS
+*.app
+*.dSYM
