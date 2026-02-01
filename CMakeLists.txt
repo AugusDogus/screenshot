@@ -5,7 +5,12 @@
 #   macOS: clang screenshot_macos.m -framework Cocoa -framework Carbon -o screenshot
 
 cmake_minimum_required(VERSION 3.25)
-project(screenshot C OBJC)
+
+if(APPLE)
+  project(screenshot C OBJC)
+else()
+  project(screenshot C)
+endif()
 
 if(APPLE)
   # macOS build
