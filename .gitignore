@@ -8,3 +8,6 @@ build/
 # macOS
 *.app
 *.dSYM
+
+# opensrc - source code for packages
+opensrc/
