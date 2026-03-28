@@ -1,5 +1,7 @@
 # Build directories
 build/
+build-*/
+cosmic-applet/target/
 
 # Windows
 *.exe

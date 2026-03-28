@@ -1,6 +1,6 @@
 # Screenshot
 
-A small, fast region screenshot overlay for **Windows** (C/Win32/GDI) and **macOS** (Objective-C/Cocoa). Darkens the desktop and provides an intuitive selection interface with clipboard integration. Features a system tray/menu bar icon and global hotkey for easy access.
+A small, fast region screenshot overlay for **Windows** (C/Win32/GDI), **macOS** (Objective-C/Cocoa), and **Linux Wayland/COSMIC** (C/GTK4 + layer-shell). It darkens the desktop, provides an intuitive selection interface with clipboard integration, and can be launched from the tray, menu bar, or COSMIC panel applet.
 
 ## Features
 
@@ -10,6 +10,7 @@ A small, fast region screenshot overlay for **Windows** (C/Win32/GDI) and **macO
 - **Clipboard Integration**: Copy selection to clipboard with Enter or Cmd+C (macOS) / Ctrl+C (Windows)
 - **Easy Exit**: Cancel/exit with Esc or right-click
 - **System Tray / Menu Bar**: Always accessible via tray icon (Windows) or menu bar (macOS)
+- **COSMIC Applet**: Launch from the COSMIC panel on Linux
 - **Global Hotkey**:
   - **Windows**: PrintScreen key triggers screenshot overlay instantly
   - **macOS**: Cmd+Shift+4 triggers screenshot overlay
@@ -97,3 +98,29 @@ open build/screenshot.app
 ```
 
 Or double-click `screenshot.app` in Finder.
+
+### Linux (Wayland/COSMIC)
+
+#### Prerequisites
+
+- **CMake**
+- **pkg-config**
+- **GTK4**
+- **gtk4-layer-shell**
+- **wl-clipboard**
+- An XDG desktop portal screenshot backend such as **COSMIC**
+
+#### Build
+
+```bash
+cmake -B build-linux -DCMAKE_BUILD_TYPE=Release
+cmake --build build-linux
+```
+
+#### Install Locally
+
+```bash
+install -Dm755 build-linux/screenshot ~/.local/bin/screenshot
+```
+
+For the COSMIC panel applet, also install the applet binary and desktop entry from `cosmic-applet/`.

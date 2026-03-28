@@ -1,5 +1,5 @@
 # Matches:
-#   Windows: cl /TC screenshot.c /MD /O1 /GL /Gy /DNDEBUG ^
+#   Windows: cl /TC screenshot_windows.c /MD /O1 /GL /Gy /DNDEBUG ^
 #      /link user32.lib gdi32.lib msimg32.lib shell32.lib ^
 #            /SUBSYSTEM:WINDOWS /LTCG /OPT:REF /OPT:ICF /INCREMENTAL:NO /DEBUG:NONE
 #   macOS: clang screenshot_macos.m -framework Cocoa -framework Carbon -o screenshot
@@ -14,7 +14,7 @@ endif()
 
 if(APPLE)
   # macOS build
-  add_executable(screenshot MACOSX_BUNDLE screenshot.m)
+  add_executable(screenshot MACOSX_BUNDLE screenshot_macos.m)
   
   target_link_libraries(screenshot PRIVATE
     "-framework Cocoa"
@@ -37,7 +37,7 @@ if(APPLE)
   
 elseif(WIN32)
   # Windows build
-  add_executable(screenshot WIN32 screenshot.c)
+  add_executable(screenshot WIN32 screenshot_windows.c)
 
   if (MSVC)
     set(CMAKE_C_FLAGS_RELEASE    "/TC /O1 /Gy /GL /DNDEBUG" CACHE STRING "" FORCE)
@@ -57,4 +57,10 @@ elseif(WIN32)
   endif()
 
   target_link_libraries(screenshot PRIVATE user32 gdi32 msimg32 shell32)
+
+elseif(UNIX AND NOT APPLE)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(SHOT_LINUX REQUIRED IMPORTED_TARGET gtk4 gtk4-layer-shell-0)
+  add_executable(screenshot screenshot_linux.c)
+  target_link_libraries(screenshot PRIVATE PkgConfig::SHOT_LINUX)
 endif()
