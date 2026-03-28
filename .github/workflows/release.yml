@@ -84,8 +84,44 @@ jobs:
           name: macos-${{ matrix.arch }}
           path: ${{ steps.stage.outputs.zip_path }}
 
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            pkg-config \
+            libgtk-4-dev \
+            libgtk4-layer-shell-dev \
+            libglib2.0-dev \
+            libcairo2-dev
+
+      - name: Configure
+        run: cmake -B build-linux -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build-linux
+
+      - name: Stage Linux binary
+        id: stage
+        run: |
+          tag="${{ github.ref_name }}"
+          tarName="screenshot-${tag}-linux-x86_64.tar.gz"
+          mkdir -p dist
+          tar -C build-linux -czf "dist/${tarName}" screenshot
+          echo "tar_path=dist/${tarName}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: ${{ steps.stage.outputs.tar_path }}
+
   release:
-    needs: [build-windows, build-macos]
+    needs: [build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -104,6 +140,10 @@ jobs:
         with:
           name: macos-x86_64
           path: dist/macos
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-x86_64
+          path: dist/linux
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -112,3 +152,4 @@ jobs:
           files: |
             dist/windows/*.exe
             dist/macos/*.zip
+            dist/linux/*.tar.gz

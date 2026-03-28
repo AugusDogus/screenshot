@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Screenshot
+Comment=Region screenshot (portal + overlay)
+Exec=screenshot
+Icon=camera-photo-symbolic
+Categories=Graphics;
+NoDisplay=true

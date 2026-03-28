@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Screenshot
+Type=Application
+Exec=cosmic-applet-screenshot
+Terminal=false
+Categories=COSMIC;
+Keywords=COSMIC;Screenshot;Region;
+Icon=camera-photo-symbolic
+StartupNotify=true
+NoDisplay=true
+X-CosmicApplet=true
+X-OverflowPriority=10
