@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #ifndef MIN
@@ -406,48 +405,28 @@ static gboolean copy_selection_to_clipboard(void) {
     return FALSE;
   }
 
-  int fds[2];
-  if (pipe(fds) != 0) {
-    fprintf(stderr, "screenshot: failed to create pipe for wl-copy\n");
+  const gchar *argv[] = {"wl-copy", "--type", "image/png", NULL};
+  GSubprocess *proc =
+      g_subprocess_newv(argv, G_SUBPROCESS_FLAGS_STDIN_PIPE, &err);
+  if (!proc) {
+    fprintf(stderr, "screenshot: failed to start wl-copy: %s\n",
+            err ? err->message : "?");
+    g_clear_error(&err);
     g_free(buf);
     g_object_unref(sub);
     return FALSE;
   }
 
-  pid_t pid = fork();
-  if (pid < 0) {
-    fprintf(stderr, "screenshot: failed to fork wl-copy\n");
-    close(fds[0]);
-    close(fds[1]);
-    g_free(buf);
-    g_object_unref(sub);
-    return FALSE;
-  }
-
-  if (pid == 0) {
-    dup2(fds[0], STDIN_FILENO);
-    close(fds[0]);
-    close(fds[1]);
-    execlp("wl-copy", "wl-copy", "--type", "image/png", (char *)NULL);
-    _exit(127);
-  }
-
-  close(fds[0]);
-  gsize total = 0;
-  while (total < len) {
-    ssize_t n = write(fds[1], buf + total, len - total);
-    if (n <= 0)
-      break;
-    total += (gsize)n;
-  }
-  close(fds[1]);
-
-  int st = 0;
-  waitpid(pid, &st, 0);
-  g_free(buf);
+  GBytes *stdin_buf = g_bytes_new_take(buf, len);
+  gboolean ok =
+      g_subprocess_communicate(proc, stdin_buf, NULL, NULL, NULL, &err);
+  g_bytes_unref(stdin_buf);
   g_object_unref(sub);
-  if (total != len || !WIFEXITED(st) || WEXITSTATUS(st) != 0) {
-    fprintf(stderr, "screenshot: wl-copy failed\n");
+  g_object_unref(proc);
+  if (!ok) {
+    fprintf(stderr, "screenshot: wl-copy failed: %s\n",
+            err ? err->message : "?");
+    g_clear_error(&err);
     return FALSE;
   }
   return TRUE;
@@ -464,14 +443,14 @@ static gboolean on_key_pressed(GtkEventControllerKey *controller, guint keyval,
     return TRUE;
   }
   if (keyval == GDK_KEY_Return || keyval == GDK_KEY_KP_Enter) {
-    copy_selection_to_clipboard();
-    close_overlay_and_quit();
+    if (copy_selection_to_clipboard())
+      close_overlay_and_quit();
     return TRUE;
   }
   if ((state & GDK_CONTROL_MASK) &&
       (keyval == GDK_KEY_c || keyval == GDK_KEY_C)) {
-    copy_selection_to_clipboard();
-    close_overlay_and_quit();
+    if (copy_selection_to_clipboard())
+      close_overlay_and_quit();
     return TRUE;
   }
   return FALSE;
@@ -819,6 +798,7 @@ static void open_overlay_from_pixbuf(GdkPixbuf *pix) {
     g_object_set_data(G_OBJECT(da), "overlay-window", ow);
 
     GtkGesture *click = gtk_gesture_click_new();
+    gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(click), 0);
     gtk_widget_add_controller(da, GTK_EVENT_CONTROLLER(click));
     g_signal_connect(click, "pressed", G_CALLBACK(on_click_pressed), da);
     g_signal_connect(click, "released", G_CALLBACK(on_click_released), da);
