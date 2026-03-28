@@ -74,6 +74,25 @@ static gboolean g_session_ending;
 
 static void close_overlay_and_quit(void);
 
+static char *portal_request_path_for_token(GDBusConnection *bus,
+                                           const char *token) {
+  const char *unique = g_dbus_connection_get_unique_name(bus);
+  if (!unique || !token)
+    return NULL;
+
+  GString *sender = g_string_new(NULL);
+  for (const char *p = unique; *p; p++) {
+    if (*p == ':')
+      continue;
+    g_string_append_c(sender, *p == '.' ? '_' : *p);
+  }
+
+  char *path = g_strdup_printf("/org/freedesktop/portal/desktop/request/%s/%s",
+                               sender->str, token);
+  g_string_free(sender, TRUE);
+  return path;
+}
+
 static const double OVERLAY_ALPHA = 0.45;
 static const int HANDLE_SIZE = 3;
 static const int BORDER_WIDTH = 2;
@@ -419,7 +438,8 @@ static gboolean copy_selection_to_clipboard(void) {
 
   GBytes *stdin_buf = g_bytes_new_take(buf, len);
   gboolean ok =
-      g_subprocess_communicate(proc, stdin_buf, NULL, NULL, NULL, &err);
+      g_subprocess_communicate(proc, stdin_buf, NULL, NULL, NULL, &err) &&
+      g_subprocess_wait_check(proc, NULL, &err);
   g_bytes_unref(stdin_buf);
   g_object_unref(sub);
   g_object_unref(proc);
@@ -912,11 +932,17 @@ static void portal_screenshot_cb(GObject *src, GAsyncResult *res,
     return;
   }
 
-  g_free(pw->request_path);
-  pw->request_path = g_strdup(handle_path);
-  pw->sub_id = g_dbus_connection_signal_subscribe(
-      bus, NULL, "org.freedesktop.portal.Request", "Response", handle_path, NULL,
-      G_DBUS_SIGNAL_FLAGS_NONE, on_portal_response, pw, NULL);
+  if (!pw->request_path || strcmp(pw->request_path, handle_path) != 0) {
+    if (pw->sub_id) {
+      g_dbus_connection_signal_unsubscribe(bus, pw->sub_id);
+      pw->sub_id = 0;
+    }
+    g_free(pw->request_path);
+    pw->request_path = g_strdup(handle_path);
+    pw->sub_id = g_dbus_connection_signal_subscribe(
+        bus, NULL, "org.freedesktop.portal.Request", "Response", handle_path,
+        NULL, G_DBUS_SIGNAL_FLAGS_NONE, on_portal_response, pw, NULL);
+  }
   g_free(handle_path);
 }
 
@@ -941,6 +967,13 @@ static void begin_portal_screenshot(void) {
 
   PortalWait *pw = g_new0(PortalWait, 1);
   pw->bus = g_object_ref(bus);
+  pw->request_path = portal_request_path_for_token(bus, token);
+  if (pw->request_path) {
+    pw->sub_id = g_dbus_connection_signal_subscribe(
+        bus, NULL, "org.freedesktop.portal.Request", "Response",
+        pw->request_path, NULL, G_DBUS_SIGNAL_FLAGS_NONE, on_portal_response,
+        pw, NULL);
+  }
 
   GVariant *options = g_variant_dict_end(&opts);
   GVariant *args = g_variant_new("(s@a{sv})", "", options);
