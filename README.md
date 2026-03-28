@@ -117,10 +117,21 @@ cmake -B build-linux -DCMAKE_BUILD_TYPE=Release
 cmake --build build-linux
 ```
 
+#### Build COSMIC Applet
+
+```bash
+cargo build --release --manifest-path cosmic-applet/Cargo.toml
+```
+
 #### Install Locally
 
 ```bash
 install -Dm755 build-linux/screenshot ~/.local/bin/screenshot
 ```
 
-For the COSMIC panel applet, also install the applet binary and desktop entry from `cosmic-applet/`.
+For the COSMIC panel applet, also install:
+
+```bash
+install -Dm755 cosmic-applet/target/release/cosmic-applet-screenshot ~/.local/bin/cosmic-applet-screenshot
+install -Dm644 cosmic-applet/data/com.screenshot.CosmicApplet.desktop ~/.local/share/applications/com.screenshot.CosmicApplet.desktop
+```

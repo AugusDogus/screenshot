@@ -3,6 +3,7 @@ use cosmic::iced::window::Id;
 use cosmic::prelude::*;
 use cosmic::widget;
 use std::process::Command;
+use tokio::task;
 
 const APP_ID: &str = "com.screenshot.CosmicApplet";
 const ICON: &str = "camera-photo-symbolic";
@@ -90,18 +91,25 @@ impl cosmic::Application for AppModel {
                 let bin = screenshot_binary();
                 Task::perform(
                     async move {
-                        match Command::new(&bin)
-                            .stdin(std::process::Stdio::null())
-                            .stdout(std::process::Stdio::null())
-                            .stderr(std::process::Stdio::null())
-                            .status()
+                        match task::spawn_blocking(move || {
+                            match Command::new(&bin)
+                                .stdin(std::process::Stdio::null())
+                                .stdout(std::process::Stdio::null())
+                                .stderr(std::process::Stdio::null())
+                                .status()
+                            {
+                                Ok(s) if s.success() => Ok(()),
+                                Ok(s) => Err(match s.code() {
+                                    Some(c) => format!("screenshot exited with code {c}"),
+                                    None => "screenshot terminated by signal".to_string(),
+                                }),
+                                Err(e) => Err(format!("Could not run {bin}: {e}")),
+                            }
+                        })
+                        .await
                         {
-                            Ok(s) if s.success() => Ok(()),
-                            Ok(s) => Err(match s.code() {
-                                Some(c) => format!("screenshot exited with code {c}"),
-                                None => "screenshot terminated by signal".to_string(),
-                            }),
-                            Err(e) => Err(format!("Could not run {bin}: {e}")),
+                            Ok(result) => result,
+                            Err(e) => Err(format!("screenshot task failed: {e}")),
                         }
                     },
                     |result| cosmic::Action::App(Message::Spawned(result)),

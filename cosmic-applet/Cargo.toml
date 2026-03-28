@@ -6,11 +6,13 @@ license = "MIT"
 description = "COSMIC panel applet to launch region screenshot (GTK portal helper)"
 
 [dependencies]
+tokio = { version = "1", features = ["rt"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 [dependencies.libcosmic]
 git = "https://github.com/pop-os/libcosmic.git"
+rev = "8e439c842ccc37a5df0821141c61766aef10c53e"
 default-features = false
 features = [
   "applet",
