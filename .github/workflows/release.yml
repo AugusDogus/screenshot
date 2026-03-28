@@ -93,7 +93,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            cargo \
             cmake \
+            rustc \
             pkg-config \
             libgtk-4-dev \
             libgtk4-layer-shell-dev \
@@ -103,16 +105,24 @@ jobs:
       - name: Configure
         run: cmake -B build-linux -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build
+      - name: Build screenshot
         run: cmake --build build-linux
 
-      - name: Stage Linux binary
+      - name: Build COSMIC applet
+        run: cargo build --release --manifest-path cosmic-applet/Cargo.toml
+
+      - name: Stage Linux bundle
         id: stage
         run: |
           tag="${{ github.ref_name }}"
           tarName="screenshot-${tag}-linux-x86_64.tar.gz"
-          mkdir -p dist
-          tar -C build-linux -czf "dist/${tarName}" screenshot
+          root="dist/screenshot-${tag}-linux-x86_64"
+          mkdir -p "$root/bin" "$root/share/applications"
+          install -m755 build-linux/screenshot "$root/bin/screenshot"
+          install -m755 cosmic-applet/target/release/cosmic-applet-screenshot "$root/bin/cosmic-applet-screenshot"
+          install -m644 data/com.screenshot.app.desktop "$root/share/applications/com.screenshot.app.desktop"
+          install -m644 cosmic-applet/data/com.screenshot.CosmicApplet.desktop "$root/share/applications/com.screenshot.CosmicApplet.desktop"
+          tar -C dist -czf "dist/${tarName}" "screenshot-${tag}-linux-x86_64"
           echo "tar_path=dist/${tarName}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
