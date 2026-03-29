@@ -64,6 +64,8 @@ typedef struct {
   guint sub_id;
   char *request_path;
   GDBusConnection *bus;
+  gboolean call_done;
+  gboolean response_done;
 } PortalWait;
 
 static OverlayState g_ov;
@@ -719,6 +721,11 @@ static void portal_wait_free(PortalWait *pw) {
   g_free(pw);
 }
 
+static void portal_wait_maybe_free(PortalWait *pw) {
+  if (pw && pw->call_done && pw->response_done)
+    portal_wait_free(pw);
+}
+
 static void virtual_monitor_bounds(GdkDisplay *dsp, GdkRectangle *out) {
   GListModel *monitors = gdk_display_get_monitors(dsp);
   int n = monitors ? (int)g_list_model_get_n_items(monitors) : 0;
@@ -731,6 +738,8 @@ static void virtual_monitor_bounds(GdkDisplay *dsp, GdkRectangle *out) {
   int min_x = INT_MAX, min_y = INT_MAX, max_r = INT_MIN, max_b = INT_MIN;
   for (int i = 0; i < n; i++) {
     GdkMonitor *m = get_monitor_at_index(dsp, i);
+    if (!m)
+      continue;
     GdkRectangle g;
     gdk_monitor_get_geometry(m, &g);
     g_object_unref(m);
@@ -738,6 +747,13 @@ static void virtual_monitor_bounds(GdkDisplay *dsp, GdkRectangle *out) {
     min_y = MIN(min_y, g.y);
     max_r = MAX(max_r, g.x + g.width);
     max_b = MAX(max_b, g.y + g.height);
+  }
+  if (min_x == INT_MAX || min_y == INT_MAX || max_r == INT_MIN ||
+      max_b == INT_MIN) {
+    out->x = out->y = 0;
+    out->width = 1920;
+    out->height = 1080;
+    return;
   }
   out->x = min_x;
   out->y = min_y;
@@ -779,7 +795,10 @@ static void open_overlay_from_pixbuf(GdkPixbuf *pix) {
     GdkMonitor *monitor = NULL;
     if (monitors && g_list_model_get_n_items(monitors) > 0) {
       monitor = get_monitor_at_index(dsp, i);
-      gdk_monitor_get_geometry(monitor, &ow->geom);
+      if (monitor)
+        gdk_monitor_get_geometry(monitor, &ow->geom);
+      else
+        ow->geom = g_ov.virt;
     } else {
       ow->geom = g_ov.virt;
     }
@@ -859,10 +878,11 @@ static void on_portal_response(GDBusConnection *bus, const char *sender,
 
   g_dbus_connection_signal_unsubscribe(bus, pw->sub_id);
   pw->sub_id = 0;
+  pw->response_done = TRUE;
 
   if (response != 0) {
     request_close(bus, path);
-    portal_wait_free(pw);
+    portal_wait_maybe_free(pw);
     if (response != 1)
       fprintf(stderr, "screenshot: portal error code %u\n", response);
     quit_capture_session();
@@ -875,7 +895,7 @@ static void on_portal_response(GDBusConnection *bus, const char *sender,
     fprintf(stderr, "screenshot: portal response missing uri\n");
     g_variant_unref(results);
     request_close(bus, path);
-    portal_wait_free(pw);
+    portal_wait_maybe_free(pw);
     quit_capture_session();
     return;
   }
@@ -884,7 +904,7 @@ static void on_portal_response(GDBusConnection *bus, const char *sender,
   gchar *file_path = g_filename_from_uri(uri, NULL, &err);
   g_variant_unref(results);
   request_close(bus, path);
-  portal_wait_free(pw);
+  portal_wait_maybe_free(pw);
 
   if (!file_path) {
     fprintf(stderr, "screenshot: bad uri: %s\n", err ? err->message : "?");
@@ -918,7 +938,9 @@ static void portal_screenshot_cb(GObject *src, GAsyncResult *res,
     fprintf(stderr, "screenshot: portal Screenshot call failed: %s\n",
             err->message);
     g_clear_error(&err);
-    portal_wait_free(pw);
+    pw->call_done = TRUE;
+    pw->response_done = TRUE;
+    portal_wait_maybe_free(pw);
     quit_capture_session();
     return;
   }
@@ -927,7 +949,9 @@ static void portal_screenshot_cb(GObject *src, GAsyncResult *res,
   g_variant_get(reply, "(o)", &handle_path);
   g_variant_unref(reply);
   if (!handle_path) {
-    portal_wait_free(pw);
+    pw->call_done = TRUE;
+    pw->response_done = TRUE;
+    portal_wait_maybe_free(pw);
     quit_capture_session();
     return;
   }
@@ -944,6 +968,8 @@ static void portal_screenshot_cb(GObject *src, GAsyncResult *res,
         NULL, G_DBUS_SIGNAL_FLAGS_NONE, on_portal_response, pw, NULL);
   }
   g_free(handle_path);
+  pw->call_done = TRUE;
+  portal_wait_maybe_free(pw);
 }
 
 static void begin_portal_screenshot(void) {
