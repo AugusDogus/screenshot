@@ -408,6 +408,18 @@ static gboolean copy_selection_to_clipboard(void) {
   if (!g_ov.have_sel)
     return FALSE;
   IRect n = sel_to_irect(g_ov.sel);
+  if (n.x < 0) {
+    n.w += n.x;
+    n.x = 0;
+  }
+  if (n.y < 0) {
+    n.h += n.y;
+    n.y = 0;
+  }
+  if (n.x + n.w > g_ov.cap_w)
+    n.w = g_ov.cap_w - n.x;
+  if (n.y + n.h > g_ov.cap_h)
+    n.h = g_ov.cap_h - n.y;
   if (n.w <= 0 || n.h <= 0)
     return FALSE;
 
@@ -550,8 +562,8 @@ static void on_motion(GtkEventControllerMotion *controller, double x, double y,
     g_ov.drag_cy = gy;
     sr->x1 = g_ov.drag_sx;
     sr->y1 = g_ov.drag_sy;
-    sr->x2 = gx;
-    sr->y2 = gy;
+    sr->x2 = CLAMP(gx, 0, cw);
+    sr->y2 = CLAMP(gy, 0, ch);
     queue_draw_all();
     return;
   }
