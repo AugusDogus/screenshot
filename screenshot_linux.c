@@ -956,7 +956,8 @@ static void portal_screenshot_cb(GObject *src, GAsyncResult *res,
     return;
   }
 
-  if (!pw->request_path || strcmp(pw->request_path, handle_path) != 0) {
+  if (pw->sub_id == 0 || !pw->request_path ||
+      strcmp(pw->request_path, handle_path) != 0) {
     if (pw->sub_id) {
       g_dbus_connection_signal_unsubscribe(bus, pw->sub_id);
       pw->sub_id = 0;
@@ -966,6 +967,15 @@ static void portal_screenshot_cb(GObject *src, GAsyncResult *res,
     pw->sub_id = g_dbus_connection_signal_subscribe(
         bus, NULL, "org.freedesktop.portal.Request", "Response", handle_path,
         NULL, G_DBUS_SIGNAL_FLAGS_NONE, on_portal_response, pw, NULL);
+    if (pw->sub_id == 0) {
+      fprintf(stderr, "screenshot: failed to subscribe to portal response\n");
+      g_free(handle_path);
+      pw->call_done = TRUE;
+      pw->response_done = TRUE;
+      portal_wait_maybe_free(pw);
+      quit_capture_session();
+      return;
+    }
   }
   g_free(handle_path);
   pw->call_done = TRUE;
